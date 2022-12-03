@@ -205,7 +205,7 @@ func (c *Client) GetPlaylistsForUserOpt(userID string, opt *Options) (*SimplePla
 }
 
 // GetPlaylist gets a playlist
-func (c *Client) GetPlaylist(playlistID ID, offset int) (*FullPlaylist, error) {
+func (c *Client) GetPlaylist(playlistID ID) (*FullPlaylist, error) {
 	return c.GetPlaylistOpt(playlistID, "")
 }
 
@@ -228,7 +228,7 @@ func (c *Client) GetPlaylist(playlistID ID, offset int) (*FullPlaylist, error) {
 // Fields can be excluded by prefixing them with an exclamation mark, for example;
 //    fields = "tracks.items(track(name,href,album(!name,href)))"
 func (c *Client) GetPlaylistOpt(playlistID ID, fields string) (*FullPlaylist, error) {
-	spotifyURL := fmt.Sprintf("%splaylists/%s/tracks?offset=%d", c.baseURL, playlistID)
+	spotifyURL := fmt.Sprintf("%splaylists/%s", c.baseURL, playlistID)
 	if fields != "" {
 		spotifyURL += "?fields=" + url.QueryEscape(fields)
 	}
