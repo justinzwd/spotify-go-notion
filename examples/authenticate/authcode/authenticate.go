@@ -54,7 +54,7 @@ func main() {
 	}
 	fmt.Println("You are logged in as:", user.ID)
 
-	err = extractArtistSongsAndCreateNewPlaylist(client, "7g6jtS5UzZgTtlnuFhhLmT", "A-Mei Chang")
+	err = extractArtistSongsAndCreateNewPlaylist(client, "7g6jtS5UzZgTtlnuFhhLmT", "Michael Bublé")
 	if err != nil {
 		log.Fatal(err)
 		return

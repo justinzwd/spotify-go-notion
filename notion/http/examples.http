@@ -1,0 +1,112 @@
+### Database
+#List
+GET https://api.notion.com/v1/databases
+Content-Type: application/json
+Authorization: Bearer {{token}}
+Notion-Version: {{api_version}}
+
+###
+#Get
+GET https://api.notion.com/v1/databases/{{database_id}}
+Authorization: Bearer {{token}}
+
+###
+# Query
+POST https://api.notion.com/v1/databases/{{database_id}}/query
+Content-Type: application/json
+Authorization: Bearer {{token}}
+Notion-Version: {{api_version}}
+
+{
+  "filter": {
+    "property": "Name",
+    "rich_text": {
+      "equals": "Hello"
+    }
+  }
+}
+
+###
+# Create
+POST https://api.notion.com/v1/databases/
+Content-Type: application/json
+Authorization: Bearer {{token}}
+Notion-Version: {{api_version}}
+
+{
+  "parent": {
+    "type": "page_id",
+    "page_id": "{{page_id}}"
+  },
+  "title": [
+    {
+      "type": "text",
+      "text": {
+        "content": "Grocery List",
+        "link": null
+      }
+    }
+  ],
+  "properties": {
+    "Name": {
+      "title": {}
+    },
+    "create": {
+      "type": "rich_text",
+      "rich_text": {}
+    }
+  }
+}
+
+### Page
+# Get
+GET https://api.notion.com/v1/pages/{{page_id}}
+Content-Type: application/json
+Authorization: Bearer {{token}}
+Notion-Version: {{api_version}}
+
+###
+# Update
+PATCH https://api.notion.com/v1/pages/{{page_id}}
+Content-Type: application/json
+Authorization: Bearer {{token}}
+Notion-Version: {{api_version}}
+
+{
+  "archived": false,
+  "properties": {
+    "Checked": {
+      "checkbox": false
+    }
+  }
+}
+
+
+### Block
+# Get
+GET https://api.notion.com/v1/blocks/{{block_id}}
+Content-Type: application/json
+Authorization: Bearer {{token}}
+Notion-Version: {{api_version}}
+
+
+###
+# Retrieve Block Children
+GET https://api.notion.com/v1/blocks/{{block_id}}/children
+Content-Type: application/json
+Authorization: Bearer {{token}}
+Notion-Version: {{api_version}}
+
+
+###
+# Update
+PATCH  https://api.notion.com/v1/blocks/{{block_id}}
+Content-Type: application/json
+Authorization: Bearer {{token}}
+Notion-Version: {{api_version}}
+
+{
+  "to_do": {
+    "checked": false
+  }
+}
