@@ -116,7 +116,7 @@ func TestGetPlaylistTracks(t *testing.T) {
 	client, server := testClientFile(http.StatusOK, "test_data/playlist_tracks.txt")
 	defer server.Close()
 
-	tracks, err := client.GetPlaylistTracks("playlistID")
+	tracks, err := client.GetPlaylistTracks("playlistID", 0, 100)
 	if err != nil {
 		t.Error(err)
 	}
@@ -198,6 +198,11 @@ func TestCreatePlaylist(t *testing.T) {
 	client, server := testClientString(http.StatusCreated, fmt.Sprintf(newPlaylist, false))
 	defer server.Close()
 
+	// token, err := client.Token()
+	// if err != nil {
+	// 	t.Error(err)
+	// }
+	// fmt.Println("token", token)
 	p, err := client.CreatePlaylistForUser("thelinmichael", "A New Playlist", "Test Description", false)
 	if err != nil {
 		t.Error(err)

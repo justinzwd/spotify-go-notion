@@ -6,26 +6,75 @@ import (
 	"fmt"
 	"io/ioutil"
 	"net/http"
+	"spotify-go-notion/core"
 	"spotify-go-notion/testFolder/types"
 	"strings"
 )
 
 const (
-	CLIENT_ID     = "88f46cd5cc784dd897218e862d39b366"
-	CLIENT_SECRET = "bfc246da5a7045a6a2390a6b59987a9d"
+	CLIENT_ID           = "88f46cd5cc784dd897218e862d39b366"
+	CLIENT_SECRET       = "bfc246da5a7045a6a2390a6b59987a9d"
+	USER_ID             = "justinzwd"
+	DEFAULT_PLAYLIST_ID = "7g6jtS5UzZgTtlnuFhhLmT"
 )
 
 func main() {
+	// fmt.Println(os.Getenv("SPOTIFY_ID"))
+	// fmt.Println(os.Getenv("SPOTIFY_SECRET"))
 
-	url := "https://api.spotify.com/v1/playlists/7g6jtS5UzZgTtlnuFhhLmT"
+}
+
+func createPlaylist(userID, playlistName, description string, isPublic bool) error {
+	url := "https://api.spotify.com/v1/users/" + userID + "/playlists"
+	method := "POST"
+
+	requestStr := `{
+		"name": "` + playlistName + `",
+		"description": "` + description + `",
+		"public": ` + fmt.Sprintf("%v", isPublic) + `
+	}`
+	fmt.Println("requestStr", requestStr)
+	payload := strings.NewReader(requestStr)
+
+	client := &http.Client{}
+	req, err := http.NewRequest(method, url, payload)
+
+	if err != nil {
+		fmt.Println(err)
+		return err
+	}
+	//todo 把token缓存起来
+	accessToken := getAuthToken(CLIENT_ID, CLIENT_SECRET)
+	req.Header.Add("Authorization", "Bearer "+accessToken)
+	req.Header.Add("Content-Type", "application/json")
+
+	res, err := client.Do(req)
+	if err != nil {
+		fmt.Println(err)
+		return err
+	}
+	defer res.Body.Close()
+
+	body, err := ioutil.ReadAll(res.Body)
+	if err != nil {
+		fmt.Println(err)
+		return err
+	}
+	fmt.Println(string(body))
+	return nil
+}
+
+func getPlaylist(playlistId string) (core.FullPlaylist, error) {
+	playlist := core.FullPlaylist{}
+	url := "https://api.spotify.com/v1/playlists/" + playlistId
 	method := "GET"
 
 	client := &http.Client{}
 	req, err := http.NewRequest(method, url, nil)
 
 	if err != nil {
-		fmt.Println(err)
-		return
+		// fmt.Println(err)
+		return playlist, err
 	}
 	accessToken := getAuthToken(CLIENT_ID, CLIENT_SECRET)
 	// fmt.Println("accessToken", accessToken)
@@ -34,18 +83,24 @@ func main() {
 
 	res, err := client.Do(req)
 	if err != nil {
-		fmt.Println(err)
-		return
+		// fmt.Println(err)
+		return playlist, err
 	}
 	defer res.Body.Close()
 
 	body, err := ioutil.ReadAll(res.Body)
 	if err != nil {
-		fmt.Println(err)
-		return
+		// fmt.Println(err)
+		return playlist, err
 	}
-	fmt.Println(string(body))
+	// fmt.Println(string(body))
 	// ioutil.WriteFile("./test.txt", body, 0666)
+	err = json.Unmarshal(body, &playlist)
+	if err != nil {
+		// fmt.Println(err)
+		return playlist, err
+	}
+	return playlist, nil
 }
 
 func getAuthToken(clientId, clientSecret string) string {

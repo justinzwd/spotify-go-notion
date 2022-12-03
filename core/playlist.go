@@ -205,7 +205,7 @@ func (c *Client) GetPlaylistsForUserOpt(userID string, opt *Options) (*SimplePla
 }
 
 // GetPlaylist gets a playlist
-func (c *Client) GetPlaylist(playlistID ID) (*FullPlaylist, error) {
+func (c *Client) GetPlaylist(playlistID ID, offset int) (*FullPlaylist, error) {
 	return c.GetPlaylistOpt(playlistID, "")
 }
 
@@ -228,7 +228,7 @@ func (c *Client) GetPlaylist(playlistID ID) (*FullPlaylist, error) {
 // Fields can be excluded by prefixing them with an exclamation mark, for example;
 //    fields = "tracks.items(track(name,href,album(!name,href)))"
 func (c *Client) GetPlaylistOpt(playlistID ID, fields string) (*FullPlaylist, error) {
-	spotifyURL := fmt.Sprintf("%splaylists/%s", c.baseURL, playlistID)
+	spotifyURL := fmt.Sprintf("%splaylists/%s/tracks?offset=%d", c.baseURL, playlistID)
 	if fields != "" {
 		spotifyURL += "?fields=" + url.QueryEscape(fields)
 	}
@@ -245,8 +245,8 @@ func (c *Client) GetPlaylistOpt(playlistID ID, fields string) (*FullPlaylist, er
 
 // GetPlaylistTracks gets full details of the tracks in a playlist, given the
 // playlist's Spotify ID.
-func (c *Client) GetPlaylistTracks(playlistID ID) (*PlaylistTrackPage, error) {
-	return c.GetPlaylistTracksOpt(playlistID, nil, "")
+func (c *Client) GetPlaylistTracks(playlistID ID, offset, limit int) (*PlaylistTrackPage, error) {
+	return c.GetPlaylistTracksOpt(playlistID, nil, "", offset, limit)
 }
 
 // GetPlaylistTracksOpt is like GetPlaylistTracks, but it accepts optional parameters
@@ -268,9 +268,9 @@ func (c *Client) GetPlaylistTracks(playlistID ID) (*PlaylistTrackPage, error) {
 // Fields can be excluded by prefixing them with an exclamation mark.  For example:
 //     fields = "items.track.album(!external_urls,images)"
 func (c *Client) GetPlaylistTracksOpt(playlistID ID,
-	opt *Options, fields string) (*PlaylistTrackPage, error) {
+	opt *Options, fields string, offset, limit int) (*PlaylistTrackPage, error) {
 
-	spotifyURL := fmt.Sprintf("%splaylists/%s/tracks", c.baseURL, playlistID)
+	spotifyURL := fmt.Sprintf("%splaylists/%s/tracks?offset=%d&limit=%d", c.baseURL, playlistID, offset, limit)
 	v := url.Values{}
 	if fields != "" {
 		v.Set("fields", fields)

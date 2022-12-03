@@ -12,7 +12,7 @@ import (
 	"log"
 	"net/http"
 
-	spotify "github.com/tukaianirban/sdk.go.spotify/core"
+	spotify "spotify-go-notion/core"
 )
 
 // redirectURI is the OAuth redirect URI for the application.
@@ -21,7 +21,8 @@ import (
 const redirectURI = "http://localhost:8080/callback"
 
 var (
-	auth  = spotify.NewAuthenticator(redirectURI, spotify.ScopeUserReadPrivate)
+	//todo 在这里修改 scope
+	auth  = spotify.NewAuthenticator(redirectURI, spotify.ScopePlaylistModifyPrivate, spotify.ScopePlaylistModifyPublic, spotify.ScopePlaylistReadCollaborative, spotify.ScopePlaylistReadPrivate)
 	ch    = make(chan *spotify.Client)
 	state = "abc123"
 )
@@ -46,6 +47,32 @@ func main() {
 		log.Fatal(err)
 	}
 	fmt.Println("You are logged in as:", user.ID)
+
+	fullPlaylist, err := client.CreatePlaylistForUser(user.ID, "new playlist1234", "this is just a description", true)
+	if err != nil {
+		log.Fatal(err)
+	}
+	fmt.Println(fullPlaylist.ID)
+
+	//todo 插入多条 tracks 到新建的这个列表
+	//spotify:track:7IsdzMn6y2yGKuWOjpVL4l 这个函数会自动帮我们拼接，所以只需要后面的id即可
+	//当然也可以改变这个函数的拼接方式
+	_, err = client.AddTracksToPlaylist(fullPlaylist.ID, "7IsdzMn6y2yGKuWOjpVL4l", "3mWZefa0yfuRz0KjeeVIBU")
+	if err != nil {
+		log.Fatal(err)
+	}
+
+	// todo client.GetPlaylist 获取到 totalNum
+	// 然后再每50去请求，将数据全部保存在本地
+	// 也可以指定字段，只获取自己想要的字段
+
+	// fullPlaylist, err := client.GetPlaylistTracks("7g6jtS5UzZgTtlnuFhhLmT", 100, 100)
+	// if err != nil {
+	// 	log.Fatal(err)
+	// }
+	// fullPlaylistStr, _ := json.Marshal(fullPlaylist)
+	// fullPlaylistBytes := []byte(fullPlaylistStr)
+	// ioutil.WriteFile("./test2.json", fullPlaylistBytes, 0666)
 }
 
 func completeAuth(w http.ResponseWriter, r *http.Request) {
