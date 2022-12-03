@@ -72,6 +72,11 @@ func extractArtistSongsAndCreateNewPlaylist(client *spotify.Client, playlistId s
 		return err
 	}
 
+	// fullPlaylistStr, _ := json.Marshal(playlist)
+	// fullPlaylistBytes := []byte(fullPlaylistStr)
+	// ioutil.WriteFile("./test2.json", fullPlaylistBytes, 0666)
+	// return nil
+
 	//1.1 整个播放列表的 totalNum
 	totalNum := playlist.Tracks.Total
 	fmt.Println("totalNum", totalNum)
@@ -110,6 +115,11 @@ func extractArtistSongsAndCreateNewPlaylist(client *spotify.Client, playlistId s
 		}
 		offset += 50
 	}
+
+	// artistSongMapStr, _ := json.Marshal(artistSongMap)
+	// artistSongMapBytes := []byte(artistSongMapStr)
+	// ioutil.WriteFile("./test3.json", artistSongMapBytes, 0666)
+	// return nil
 
 	if songs, ok := artistSongMap[artistName]; ok {
 		fmt.Println(artistName, "在此播放列表里一共有", len(songs), "首歌")
