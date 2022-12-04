@@ -14,6 +14,7 @@ import (
 	"io/ioutil"
 	"log"
 	"net/http"
+	"sync"
 
 	spotify "spotify-go-notion/core"
 	notionapi "spotify-go-notion/notion"
@@ -140,12 +141,13 @@ func extractArtistSongsAndCreateNewPlaylist(client *spotify.Client, playlistId s
 			if len(track.Track.Artists) > 0 {
 				trackDetail := TrackDetail{}
 				trackDetail.TrackID = track.Track.ID.String()
-				trackDetail.TrackName = track.Track.ID.String()
-				trackDetail.TrackCover = track.Track.ID.String()
-				trackDetail.AlbumID = track.Track.ID.String()
-				trackDetail.AlbumName = track.Track.ID.String()
-				trackDetail.AlbumCover = track.Track.ID.String()
-				trackDetail.OpenURL = track.Track.ID.String()
+				trackDetail.TrackName = track.Track.Name
+				if len(track.Track.Album.Images) > 0 {
+					trackDetail.TrackCover = track.Track.Album.Images[0].URL
+				}
+				trackDetail.AlbumID = track.Track.Album.ID.String()
+				trackDetail.AlbumName = track.Track.Album.Name
+				trackDetail.OpenURL = track.Track.ExternalURLs["spotify"]
 				trackDetail.Artist = make([]string, 0)
 				for _, artist := range track.Track.Artists {
 					// 防止出现name为空的情况
@@ -233,38 +235,167 @@ func completeAuth(w http.ResponseWriter, r *http.Request) {
 func BatchInsertSongsIntoNotion(notionClient *notionapi.Client, allSongs []TrackDetail, allArtists []string, databaseID notionapi.DatabaseID) error {
 	//1. patch artists
 	//todo 这里的准备工作封装成函数
-	prop := make(map[string]notionapi.PropertyConfig, 0)
-	options := make([]notionapi.Option, 0)
-	for _, artistName := range allArtists {
-		options = append(options, notionapi.Option{
+	// prop := make(map[string]notionapi.PropertyConfig, 0)
+	// options := make([]notionapi.Option, 0)
+	// colors := []notionapi.Color{"brown", "red", "orange", "yellow", "green", "blue", "purple", "pink", "default", "gray"}
+	// index := 0
+	// for _, artistName := range allArtists {
+	// 	options = append(options, notionapi.Option{
+	// 		// ID:    "",
+	// 		Name: artistName,
+	// 		//todo 搞一个color的数组，按顺序赋值
+	// 		Color: colors[index%len(colors)],
+	// 	})
+	// 	index++
+	// }
+
+	// //todo 常量
+	// prop["Artists"] = notionapi.MultiSelectPropertyConfig{
+	// 	ID:   "Ly%5DB",
+	// 	Type: "multi_select",
+	// 	MultiSelect: notionapi.Select{
+	// 		Options: options,
+	// 	},
+	// }
+	// databaseUpdateRequest := notionapi.DatabaseUpdateRequest{
+	// 	// Title:      []notionapi.RichText{},
+	// 	Properties: prop,
+	// }
+	// // bb, _ := json.Marshal(databaseUpdateRequest)
+	// // fmt.Println(string(bb))
+
+	// _, err := notionClient.Database.Update(context.Background(), databaseID, &databaseUpdateRequest)
+
+	// if err != nil {
+	// 	return err
+	// }
+
+	//2.insert songs
+	wg := &sync.WaitGroup{}
+	for _, songDetail := range allSongs {
+		//todo go func
+		wg.Add(1)
+		go func(songDetail TrackDetail) {
+			defer wg.Done()
+			pageCreateRequest := BuildInsertTrackPageRequest(songDetail.TrackName, songDetail.TrackID, songDetail.TrackCover, songDetail.AlbumName, songDetail.AlbumID, songDetail.OpenURL, songDetail.Artist, databaseID)
+			_, err := notionClient.Page.Create(context.Background(), &pageCreateRequest)
+
+			//todo 优化
+			if err != nil {
+				fmt.Println()
+			}
+		}(songDetail)
+	}
+	wg.Wait()
+
+	return nil
+}
+
+func BuildInsertTrackPageRequest(track, trackID, trackCover, album, albumID, openURL string, artists []string, databaseID notionapi.DatabaseID) notionapi.PageCreateRequest {
+	pageProp := make(map[string]notionapi.Property, 0)
+
+	//Track name
+	trackRichTexts := make([]notionapi.RichText, 0)
+	trackRichTexts = append(trackRichTexts, notionapi.RichText{
+		Text: &notionapi.Text{
+			Content: track,
+		},
+	})
+	pageProp["Track"] = notionapi.TitleProperty{
+		// ID:    "",
+		// Type:  "",
+		Title: trackRichTexts,
+	}
+
+	//TrackID
+	trackIDRichTexts := make([]notionapi.RichText, 0)
+	trackIDRichTexts = append(trackIDRichTexts, notionapi.RichText{
+		Text: &notionapi.Text{
+			Content: trackID,
+		},
+	})
+	pageProp["TrackID"] = notionapi.RichTextProperty{
+		// ID:       "",
+		// Type:     "",
+		RichText: trackIDRichTexts,
+	}
+
+	//Track cover
+	trackCoverRichTexts := make([]notionapi.RichText, 0)
+	trackCoverRichTexts = append(trackCoverRichTexts, notionapi.RichText{
+		Text: &notionapi.Text{
+			Content: trackCover,
+		},
+	})
+	pageProp["TrackCover"] = notionapi.RichTextProperty{
+		// ID:       "",
+		// Type:     "",
+		RichText: trackCoverRichTexts,
+	}
+
+	//Album name
+	albumRichTexts := make([]notionapi.RichText, 0)
+	albumRichTexts = append(albumRichTexts, notionapi.RichText{
+		Text: &notionapi.Text{
+			Content: album,
+		},
+	})
+	pageProp["Album"] = notionapi.RichTextProperty{
+		// ID:       "",
+		// Type:     "",
+		RichText: albumRichTexts,
+	}
+
+	//AlbumID
+	albumIDRichTexts := make([]notionapi.RichText, 0)
+	albumIDRichTexts = append(albumIDRichTexts, notionapi.RichText{
+		Text: &notionapi.Text{
+			Content: albumID,
+		},
+	})
+	pageProp["AlbumID"] = notionapi.RichTextProperty{
+		// ID:       "",
+		// Type:     "",
+		RichText: albumIDRichTexts,
+	}
+
+	//Open url
+	openURLRichTexts := make([]notionapi.RichText, 0)
+	openURLRichTexts = append(openURLRichTexts, notionapi.RichText{
+		Text: &notionapi.Text{
+			Content: openURL,
+		},
+	})
+	pageProp["OpenURL"] = notionapi.RichTextProperty{
+		// ID:       "",
+		// Type:     "",
+		RichText: openURLRichTexts,
+	}
+
+	//Artists
+	artistOptions := make([]notionapi.Option, 0)
+	for _, v := range artists {
+		artistOptions = append(artistOptions, notionapi.Option{
 			// ID:    "",
-			Name: artistName,
-			//todo 搞一个color的数组，按顺序赋值
+			Name: v,
 			// Color: "",
 		})
 	}
+	pageProp["Artists"] = notionapi.MultiSelectProperty{
+		ID:          "",
+		Type:        "",
+		MultiSelect: artistOptions,
+	}
 
-	//todo 常量
-	prop["Artists"] = notionapi.MultiSelectPropertyConfig{
-		// ID:          "",
-		Type: "multi_select",
-		MultiSelect: notionapi.Select{
-			Options: options,
+	pageCreateRequest := notionapi.PageCreateRequest{
+		Parent: notionapi.Parent{
+			DatabaseID: databaseID,
 		},
-	}
-	databaseUpdateRequest := notionapi.DatabaseUpdateRequest{
-		// Title:      []notionapi.RichText{},
-		Properties: prop,
-	}
-	bb, _ := json.Marshal(databaseUpdateRequest)
-	fmt.Println(string(bb))
-
-	_, err := notionClient.Database.Update(context.Background(), databaseID, &databaseUpdateRequest)
-
-	if err != nil {
-		return err
+		Properties: pageProp,
+		// Children:   []notionapi.Block{},
+		// Icon:  &notionapi.Icon{},
+		// Cover: &notionapi.Image{},
 	}
 
-	//2.insert songs
-	return nil
+	return pageCreateRequest
 }

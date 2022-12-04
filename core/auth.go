@@ -4,6 +4,7 @@ import (
 	"context"
 	"crypto/tls"
 	"errors"
+	"fmt"
 	"net/http"
 	"os"
 
@@ -93,8 +94,8 @@ type Authenticator struct {
 // them from some other source, you can call `SetAuthInfo(id, key)` on the
 // returned authenticator.
 func NewAuthenticator(redirectURL string, scopes ...string) Authenticator {
-	// fmt.Println(os.Getenv("SPOTIFY_ID"))
-	// fmt.Println(os.Getenv("SPOTIFY_SECRET"))
+	fmt.Println(os.Getenv("SPOTIFY_ID"))
+	fmt.Println(os.Getenv("SPOTIFY_SECRET"))
 	cfg := &oauth2.Config{
 		ClientID:     os.Getenv("SPOTIFY_ID"),
 		ClientSecret: os.Getenv("SPOTIFY_SECRET"),
@@ -108,7 +109,7 @@ func NewAuthenticator(redirectURL string, scopes ...string) Authenticator {
 
 	// disable HTTP/2 for DefaultClient, see: https://github.com/zmb3/spotify/issues/20
 	tr := &http.Transport{
-		TLSNextProto: map[string]func(authority string, c *tls.Conn) http.RoundTripper{},
+		TLSNextProto: make(map[string]func(authority string, c *tls.Conn) http.RoundTripper, 0),
 	}
 	ctx := context.WithValue(context.Background(), oauth2.HTTPClient, &http.Client{Transport: tr})
 	return Authenticator{
