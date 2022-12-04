@@ -8,11 +8,16 @@
 package main
 
 import (
+	"context"
+	"encoding/json"
 	"fmt"
+	"io/ioutil"
 	"log"
 	"net/http"
 
 	spotify "spotify-go-notion/core"
+	notionapi "spotify-go-notion/notion"
+	"spotify-go-notion/utils"
 )
 
 // redirectURI is the OAuth redirect URI for the application.
@@ -22,15 +27,25 @@ const redirectURI = "http://localhost:8080/callback"
 
 var (
 	//todo 在这里修改 scope
-	auth    = spotify.NewAuthenticator(redirectURI, spotify.ScopePlaylistModifyPrivate, spotify.ScopePlaylistModifyPublic, spotify.ScopePlaylistReadCollaborative, spotify.ScopePlaylistReadPrivate)
-	ch      = make(chan *spotify.Client)
-	state   = "abc123"
-	user_id = "justinzwd"
+	auth                                           = spotify.NewAuthenticator(redirectURI, spotify.ScopePlaylistModifyPrivate, spotify.ScopePlaylistModifyPublic, spotify.ScopePlaylistReadCollaborative, spotify.ScopePlaylistReadPrivate)
+	ch                                             = make(chan *spotify.Client)
+	state                                          = "abc123"
+	user_id                                        = "justinzwd"
+	notion_wuji_integration_secret notionapi.Token = "secret_SUfSLzcHxScCwG88L6yPcvkJZzlSqjKjek3g6457guc"
+	notion_wuji_user_id                            = "d0e5814d-d4a3-415a-a7fe-f8c125c19116"
+	// notion_wuji_default_database_id notionapi.DatabaseID = "edf16fcf64c645ebb54ece3a48777380"
+	notion_wuji_default_database_id notionapi.DatabaseID = "b42b7c458f194f5b840b81e8825e2782"
 )
 
-type Song struct {
-	Name string
-	ID   string
+type TrackDetail struct {
+	TrackName  string
+	TrackID    string
+	TrackCover string
+	AlbumName  string
+	AlbumID    string
+	AlbumCover string
+	OpenURL    string
+	Artist     []string
 }
 
 func main() {
@@ -54,7 +69,10 @@ func main() {
 	}
 	fmt.Println("You are logged in as:", user.ID)
 
-	err = extractArtistSongsAndCreateNewPlaylist(client, "7g6jtS5UzZgTtlnuFhhLmT", "Michael Bublé")
+	// all my liked songs
+	// err = extractArtistSongsAndCreateNewPlaylist(client, "7g6jtS5UzZgTtlnuFhhLmT", "Michael Bublé")
+	// 2022年度音乐总结
+	err = extractArtistSongsAndCreateNewPlaylist(client, "5sQj1V4Z4F5exTR2n0efxj", "Michael Bublé")
 	if err != nil {
 		log.Fatal(err)
 		return
@@ -63,6 +81,17 @@ func main() {
 	// fullPlaylistStr, _ := json.Marshal(fullPlaylist)
 	// fullPlaylistBytes := []byte(fullPlaylistStr)
 	// ioutil.WriteFile("./test2.json", fullPlaylistBytes, 0666)
+}
+
+func main2() {
+	notionClient := notionapi.NewClient(notion_wuji_integration_secret)
+	database, err := notionClient.Database.Get(context.Background(), notion_wuji_default_database_id)
+	if err != nil {
+		log.Fatal(err)
+		return
+	}
+	bb, _ := json.Marshal(database)
+	ioutil.WriteFile("./test4.json", bb, 0666)
 }
 
 func extractArtistSongsAndCreateNewPlaylist(client *spotify.Client, playlistId spotify.ID, artistName string) error {
@@ -91,7 +120,16 @@ func extractArtistSongsAndCreateNewPlaylist(client *spotify.Client, playlistId s
 	offset := 0
 	limit := 50
 	// fullTracks := make([]spotify.SimpleTrack, 0)
+
+	// 艺人及其歌曲映射map
 	artistSongMap := make(map[string][]spotify.ID, 0)
+
+	// 所有的艺人 array
+	allArtistsMap := make(map[string]interface{}, 0)
+
+	// 所有歌曲
+	allSongs := make([]TrackDetail, 0)
+
 	for i := 0; i < count; i++ {
 		fullPlaylist, err := client.GetPlaylistTracks(playlistId, offset, limit)
 		if err != nil {
@@ -100,26 +138,55 @@ func extractArtistSongsAndCreateNewPlaylist(client *spotify.Client, playlistId s
 		}
 		for _, track := range fullPlaylist.Tracks {
 			if len(track.Track.Artists) > 0 {
+				trackDetail := TrackDetail{}
+				trackDetail.TrackID = track.Track.ID.String()
+				trackDetail.TrackName = track.Track.ID.String()
+				trackDetail.TrackCover = track.Track.ID.String()
+				trackDetail.AlbumID = track.Track.ID.String()
+				trackDetail.AlbumName = track.Track.ID.String()
+				trackDetail.AlbumCover = track.Track.ID.String()
+				trackDetail.OpenURL = track.Track.ID.String()
+				trackDetail.Artist = make([]string, 0)
 				for _, artist := range track.Track.Artists {
-					if songs, ok := artistSongMap[artist.Name]; ok {
-						//todo ID需不需要去重呢？
-						songs = append(songs, track.Track.ID)
-						artistSongMap[artist.Name] = songs
-					} else {
-						songs := make([]spotify.ID, 0)
-						songs = append(songs, track.Track.ID)
-						artistSongMap[artist.Name] = songs
+					// 防止出现name为空的情况
+					if artist.Name != "" {
+						allArtistsMap[artist.Name] = 0
+						trackDetail.Artist = append(trackDetail.Artist, artist.Name)
+
+						if songs, ok := artistSongMap[artist.Name]; ok {
+							// todo track.Track.ID 去重 （基本没必要）
+							songs = append(songs, track.Track.ID)
+							artistSongMap[artist.Name] = songs
+						} else {
+							songs := make([]spotify.ID, 0)
+							songs = append(songs, track.Track.ID)
+							artistSongMap[artist.Name] = songs
+						}
 					}
 				}
+
+				allSongs = append(allSongs, trackDetail)
 			}
 		}
 		offset += 50
 	}
 
+	allArtists := utils.ConvertMapKeysToStrArr(allArtistsMap)
+
 	// artistSongMapStr, _ := json.Marshal(artistSongMap)
 	// artistSongMapBytes := []byte(artistSongMapStr)
 	// ioutil.WriteFile("./test3.json", artistSongMapBytes, 0666)
 	// return nil
+
+	notionClient := notionapi.NewClient(notion_wuji_integration_secret)
+
+	err = BatchInsertSongsIntoNotion(notionClient, allSongs, allArtists, notion_wuji_default_database_id)
+	if err != nil {
+		log.Fatal(err)
+		return err
+	}
+
+	return nil
 
 	if songs, ok := artistSongMap[artistName]; ok {
 		fmt.Println(artistName, "在此播放列表里一共有", len(songs), "首歌")
@@ -137,6 +204,7 @@ func extractArtistSongsAndCreateNewPlaylist(client *spotify.Client, playlistId s
 		//4. 插入这些歌曲
 		_, err = client.AddTracksToPlaylist(newPlaylist.ID, songs...)
 		if err != nil {
+			//todo 非main里面不要用 fatal，保证可以正常将error传递回去
 			log.Fatal(err)
 			return err
 		}
@@ -160,4 +228,43 @@ func completeAuth(w http.ResponseWriter, r *http.Request) {
 	client := auth.NewClient(tok)
 	fmt.Fprintf(w, "Login Completed!")
 	ch <- &client
+}
+
+func BatchInsertSongsIntoNotion(notionClient *notionapi.Client, allSongs []TrackDetail, allArtists []string, databaseID notionapi.DatabaseID) error {
+	//1. patch artists
+	//todo 这里的准备工作封装成函数
+	prop := make(map[string]notionapi.PropertyConfig, 0)
+	options := make([]notionapi.Option, 0)
+	for _, artistName := range allArtists {
+		options = append(options, notionapi.Option{
+			// ID:    "",
+			Name: artistName,
+			//todo 搞一个color的数组，按顺序赋值
+			// Color: "",
+		})
+	}
+
+	//todo 常量
+	prop["Artists"] = notionapi.MultiSelectPropertyConfig{
+		// ID:          "",
+		Type: "multi_select",
+		MultiSelect: notionapi.Select{
+			Options: options,
+		},
+	}
+	databaseUpdateRequest := notionapi.DatabaseUpdateRequest{
+		// Title:      []notionapi.RichText{},
+		Properties: prop,
+	}
+	bb, _ := json.Marshal(databaseUpdateRequest)
+	fmt.Println(string(bb))
+
+	_, err := notionClient.Database.Update(context.Background(), databaseID, &databaseUpdateRequest)
+
+	if err != nil {
+		return err
+	}
+
+	//2.insert songs
+	return nil
 }
