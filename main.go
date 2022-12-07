@@ -19,6 +19,7 @@ import (
 	"spotify-go-notion/constant"
 	spotify "spotify-go-notion/core"
 	notionapi "spotify-go-notion/notion"
+	"spotify-go-notion/utils"
 )
 
 // redirectURI is the OAuth redirect URI for the application.
@@ -97,29 +98,64 @@ func main2() {
 }
 
 func extractArtistSongsAndCreateNewPlaylist(client *spotify.Client, playlistId spotify.ID, artistName string) error {
-	//1. 获取整个播放列表所有的歌曲
+	//1. 获取播放列表
 	playlist, err := client.GetPlaylist(playlistId)
 	if err != nil {
 		return err
 	}
 
-	// fullPlaylistStr, _ := json.Marshal(playlist)
-	// fullPlaylistBytes := []byte(fullPlaylistStr)
-	// ioutil.WriteFile("./fullPlaylist.json", fullPlaylistBytes, 0666)
+	//2. 获取播放列表所有歌曲以及艺人和歌曲map
+	artistSongMap, allArtists, allSongs, err := GetEntirePlaylist(client, playlistId, playlist)
+
+	// artistSongMapStr, _ := json.Marshal(artistSongMap)
+	// artistSongMapBytes := []byte(artistSongMapStr)
+	// ioutil.WriteFile("./artistSongMap.json", artistSongMapBytes, 0666)
 	// return nil
 
-	//1.1 整个播放列表的 totalNum
+	if songs, ok := artistSongMap[artistName]; ok {
+		fmt.Println(artistName, "在此播放列表里一共有", len(songs), "首歌")
+		//3. 创建歌单
+		newPlaylist, err := client.CreatePlaylistForUser(user_id, artistName, artistName+"'s songs", true)
+		if err != nil {
+			return err
+		}
+		fmt.Println("newPlaylist.ID", newPlaylist.ID)
+
+		// 插入多条 tracks 到新建的这个列表
+		//spotify:track:7IsdzMn6y2yGKuWOjpVL4l 这个函数会自动帮我们拼接，所以只需要后面的id即可
+		//当然也可以改变这个函数的拼接方式
+		//4. 插入这些歌曲
+		_, err = client.AddTracksToPlaylist(newPlaylist.ID, songs...)
+		if err != nil {
+			// 非main里面不要用 fatal，保证可以正常将error传递回去
+			return err
+		}
+		fmt.Println("成功插入", artistName, "的歌曲到新播放列表", newPlaylist.Name, "中～")
+	}
+
+	//BatchInsertSongsIntoNotion
+	//5. 将播放列表所有歌曲插入到notion中
+	notionClient := notionapi.NewClient(notion_wuji_integration_secret)
+	err = BatchInsertSongsIntoNotion(notionClient, allSongs, allArtists, notion_wuji_default_database_id)
+	if err != nil {
+		return err
+	}
+
+	return nil
+}
+
+func GetEntirePlaylist(client *spotify.Client, playlistId spotify.ID, playlist *spotify.FullPlaylist) (map[string][]spotify.ID, []string, []TrackDetail, error) {
+	// 1.1 整个播放列表的 totalNum
 	totalNum := playlist.Tracks.Total
 	fmt.Println("totalNum", totalNum)
 
-	//1.2 分页 for循环拿数据，append 到数组里面
+	// 1.2 分页 for循环拿数据，append 到数组里面
 	count := totalNum / 50
 	if totalNum%50 != 0 {
 		count++
 	}
 
-	//todo 把这一步继续封装
-	//2. 循环遍历数组，filter，把符合条件的歌放到另外一个数组/map里
+	// 2. 循环遍历数组，filter，把符合条件的歌放到另外一个数组/map里
 	offset := 0
 	limit := 50
 	// fullTracks := make([]spotify.SimpleTrack, 0)
@@ -136,7 +172,7 @@ func extractArtistSongsAndCreateNewPlaylist(client *spotify.Client, playlistId s
 	for i := 0; i < count; i++ {
 		fullPlaylist, err := client.GetPlaylistTracks(playlistId, offset, limit)
 		if err != nil {
-			return err
+			return nil, nil, nil, err
 		}
 		for _, track := range fullPlaylist.Tracks {
 			if len(track.Track.Artists) > 0 {
@@ -174,43 +210,9 @@ func extractArtistSongsAndCreateNewPlaylist(client *spotify.Client, playlistId s
 		}
 		offset += 50
 	}
+	allArtists := utils.ConvertMapKeysToStrArr(allArtistsMap)
 
-	// artistSongMapStr, _ := json.Marshal(artistSongMap)
-	// artistSongMapBytes := []byte(artistSongMapStr)
-	// ioutil.WriteFile("./artistSongMap.json", artistSongMapBytes, 0666)
-	// return nil
-
-	//BatchInsertSongsIntoNotion
-	// allArtists := utils.ConvertMapKeysToStrArr(allArtistsMap)
-	// notionClient := notionapi.NewClient(notion_wuji_integration_secret)
-	// err = BatchInsertSongsIntoNotion(notionClient, allSongs, allArtists, notion_wuji_default_database_id)
-	// if err != nil {
-	// 	return err
-	// }
-	// return nil
-
-	if songs, ok := artistSongMap[artistName]; ok {
-		fmt.Println(artistName, "在此播放列表里一共有", len(songs), "首歌")
-		//3. 创建歌单
-		newPlaylist, err := client.CreatePlaylistForUser(user_id, artistName, artistName+"'s songs", true)
-		if err != nil {
-			return err
-		}
-		fmt.Println("newPlaylist.ID", newPlaylist.ID)
-
-		// 插入多条 tracks 到新建的这个列表
-		//spotify:track:7IsdzMn6y2yGKuWOjpVL4l 这个函数会自动帮我们拼接，所以只需要后面的id即可
-		//当然也可以改变这个函数的拼接方式
-		//4. 插入这些歌曲
-		_, err = client.AddTracksToPlaylist(newPlaylist.ID, songs...)
-		if err != nil {
-			// 非main里面不要用 fatal，保证可以正常将error传递回去
-			return err
-		}
-		fmt.Println("成功插入", artistName, "的歌曲到新播放列表", newPlaylist.Name, "中～")
-	}
-
-	return nil
+	return artistSongMap, allArtists, allSongs, nil
 }
 
 func completeAuth(w http.ResponseWriter, r *http.Request) {
@@ -232,40 +234,10 @@ func completeAuth(w http.ResponseWriter, r *http.Request) {
 func BatchInsertSongsIntoNotion(notionClient *notionapi.Client, allSongs []TrackDetail, allArtists []string, databaseID notionapi.DatabaseID) error {
 	// 注意，此部分适合第一次执行，不能反复执行
 	//1. patch artists
-	//todo 这里的准备工作封装成函数
-	// prop := make(map[string]notionapi.PropertyConfig, 0)
-	// options := make([]notionapi.Option, 0)
-	// colors := []notionapi.Color{"brown", "red", "orange", "yellow", "green", "blue", "purple", "pink", "default", "gray"}
-	// index := 0
-	// for _, artistName := range allArtists {
-	// 	options = append(options, notionapi.Option{
-	// 		// ID:    "",
-	// 		Name: artistName,
-	// 		// 搞一个color的数组，按顺序赋值
-	// 		Color: colors[index%len(colors)],
-	// 	})
-	// 	index++
-	// }
-
-	// prop[constant.NOTION_DATABASE_COLUMN_ARTISTS] = notionapi.MultiSelectPropertyConfig{
-	// 	ID:   "Ly%5DB",
-	// 	Type: "multi_select",
-	// 	MultiSelect: notionapi.Select{
-	// 		Options: options,
-	// 	},
-	// }
-	// databaseUpdateRequest := notionapi.DatabaseUpdateRequest{
-	// 	// Title:      []notionapi.RichText{},
-	// 	Properties: prop,
-	// }
-	// // bb, _ := json.Marshal(databaseUpdateRequest)
-	// // fmt.Println(string(bb))
-
-	// _, err := notionClient.Database.Update(context.Background(), databaseID, &databaseUpdateRequest)
-
-	// if err != nil {
-	// 	return err
-	// }
+	err := UpdateDatabaseAllArtists(notionClient, allArtists, databaseID)
+	if err != nil {
+		return err
+	}
 
 	//2.insert songs
 	wg := &sync.WaitGroup{}
@@ -283,6 +255,44 @@ func BatchInsertSongsIntoNotion(notionClient *notionapi.Client, allSongs []Track
 		}(songDetail)
 	}
 	wg.Wait()
+
+	return nil
+}
+
+func UpdateDatabaseAllArtists(notionClient *notionapi.Client, allArtists []string, databaseID notionapi.DatabaseID) error {
+	prop := make(map[string]notionapi.PropertyConfig, 0)
+	options := make([]notionapi.Option, 0)
+	colors := []notionapi.Color{"brown", "red", "orange", "yellow", "green", "blue", "purple", "pink", "default", "gray"}
+	index := 0
+	for _, artistName := range allArtists {
+		options = append(options, notionapi.Option{
+			// ID:    "",
+			Name: artistName,
+			// 搞一个color的数组，按顺序赋值
+			Color: colors[index%len(colors)],
+		})
+		index++
+	}
+
+	prop[constant.NOTION_DATABASE_COLUMN_ARTISTS] = notionapi.MultiSelectPropertyConfig{
+		ID:   "Ly%5DB",
+		Type: "multi_select",
+		MultiSelect: notionapi.Select{
+			Options: options,
+		},
+	}
+	databaseUpdateRequest := notionapi.DatabaseUpdateRequest{
+		// Title:      []notionapi.RichText{},
+		Properties: prop,
+	}
+	// bb, _ := json.Marshal(databaseUpdateRequest)
+	// fmt.Println(string(bb))
+
+	_, err := notionClient.Database.Update(context.Background(), databaseID, &databaseUpdateRequest)
+
+	if err != nil {
+		return err
+	}
 
 	return nil
 }
