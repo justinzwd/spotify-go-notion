@@ -16,6 +16,7 @@ import (
 	"net/http"
 	"sync"
 
+	"spotify-go-notion/constant"
 	spotify "spotify-go-notion/core"
 	notionapi "spotify-go-notion/notion"
 )
@@ -26,7 +27,7 @@ import (
 const redirectURI = "http://localhost:8080/callback"
 
 var (
-	//todo 在这里修改 scope
+	// 在这里修改当前程序访问Spotify的 scope
 	auth                                           = spotify.NewAuthenticator(redirectURI, spotify.ScopePlaylistModifyPrivate, spotify.ScopePlaylistModifyPublic, spotify.ScopePlaylistReadCollaborative, spotify.ScopePlaylistReadPrivate)
 	ch                                             = make(chan *spotify.Client)
 	state                                          = "abc123"
@@ -35,6 +36,7 @@ var (
 	notion_wuji_user_id                            = "d0e5814d-d4a3-415a-a7fe-f8c125c19116"
 	// notion_wuji_default_database_id notionapi.DatabaseID = "edf16fcf64c645ebb54ece3a48777380"
 	notion_wuji_default_database_id notionapi.DatabaseID = "b42b7c458f194f5b840b81e8825e2782"
+	track_info_external_spotify                          = "spotify"
 )
 
 type TrackDetail struct {
@@ -134,7 +136,6 @@ func extractArtistSongsAndCreateNewPlaylist(client *spotify.Client, playlistId s
 	for i := 0; i < count; i++ {
 		fullPlaylist, err := client.GetPlaylistTracks(playlistId, offset, limit)
 		if err != nil {
-			log.Fatal(err)
 			return err
 		}
 		for _, track := range fullPlaylist.Tracks {
@@ -147,16 +148,17 @@ func extractArtistSongsAndCreateNewPlaylist(client *spotify.Client, playlistId s
 				}
 				trackDetail.AlbumID = track.Track.Album.ID.String()
 				trackDetail.AlbumName = track.Track.Album.Name
-				trackDetail.OpenURL = track.Track.ExternalURLs["spotify"]
+				trackDetail.OpenURL = track.Track.ExternalURLs[track_info_external_spotify]
 				trackDetail.Artist = make([]string, 0)
 				for _, artist := range track.Track.Artists {
 					// 防止出现name为空的情况
+					// 因为已经出现了name为空的情况，但是map的key不能为空
 					if artist.Name != "" {
 						allArtistsMap[artist.Name] = 0
 						trackDetail.Artist = append(trackDetail.Artist, artist.Name)
 
 						if songs, ok := artistSongMap[artist.Name]; ok {
-							// todo track.Track.ID 去重 （基本没必要）
+							// track.Track.ID 去重 （基本没必要）
 							songs = append(songs, track.Track.ID)
 							artistSongMap[artist.Name] = songs
 						} else {
@@ -183,7 +185,6 @@ func extractArtistSongsAndCreateNewPlaylist(client *spotify.Client, playlistId s
 	// notionClient := notionapi.NewClient(notion_wuji_integration_secret)
 	// err = BatchInsertSongsIntoNotion(notionClient, allSongs, allArtists, notion_wuji_default_database_id)
 	// if err != nil {
-	// 	log.Fatal(err)
 	// 	return err
 	// }
 	// return nil
@@ -193,7 +194,6 @@ func extractArtistSongsAndCreateNewPlaylist(client *spotify.Client, playlistId s
 		//3. 创建歌单
 		newPlaylist, err := client.CreatePlaylistForUser(user_id, artistName, artistName+"'s songs", true)
 		if err != nil {
-			log.Fatal(err)
 			return err
 		}
 		fmt.Println("newPlaylist.ID", newPlaylist.ID)
@@ -204,8 +204,7 @@ func extractArtistSongsAndCreateNewPlaylist(client *spotify.Client, playlistId s
 		//4. 插入这些歌曲
 		_, err = client.AddTracksToPlaylist(newPlaylist.ID, songs...)
 		if err != nil {
-			//todo 非main里面不要用 fatal，保证可以正常将error传递回去
-			log.Fatal(err)
+			// 非main里面不要用 fatal，保证可以正常将error传递回去
 			return err
 		}
 		fmt.Println("成功插入", artistName, "的歌曲到新播放列表", newPlaylist.Name, "中～")
@@ -231,6 +230,7 @@ func completeAuth(w http.ResponseWriter, r *http.Request) {
 }
 
 func BatchInsertSongsIntoNotion(notionClient *notionapi.Client, allSongs []TrackDetail, allArtists []string, databaseID notionapi.DatabaseID) error {
+	// 注意，此部分适合第一次执行，不能反复执行
 	//1. patch artists
 	//todo 这里的准备工作封装成函数
 	// prop := make(map[string]notionapi.PropertyConfig, 0)
@@ -241,14 +241,13 @@ func BatchInsertSongsIntoNotion(notionClient *notionapi.Client, allSongs []Track
 	// 	options = append(options, notionapi.Option{
 	// 		// ID:    "",
 	// 		Name: artistName,
-	// 		//todo 搞一个color的数组，按顺序赋值
+	// 		// 搞一个color的数组，按顺序赋值
 	// 		Color: colors[index%len(colors)],
 	// 	})
 	// 	index++
 	// }
 
-	// //todo 常量
-	// prop["Artists"] = notionapi.MultiSelectPropertyConfig{
+	// prop[constant.NOTION_DATABASE_COLUMN_ARTISTS] = notionapi.MultiSelectPropertyConfig{
 	// 	ID:   "Ly%5DB",
 	// 	Type: "multi_select",
 	// 	MultiSelect: notionapi.Select{
@@ -271,14 +270,13 @@ func BatchInsertSongsIntoNotion(notionClient *notionapi.Client, allSongs []Track
 	//2.insert songs
 	wg := &sync.WaitGroup{}
 	for _, songDetail := range allSongs {
-		//todo go func
 		wg.Add(1)
 		go func(songDetail TrackDetail) {
 			defer wg.Done()
 			pageCreateRequest := BuildInsertTrackPageRequest(songDetail.TrackName, songDetail.TrackID, songDetail.TrackCover, songDetail.AlbumName, songDetail.AlbumID, songDetail.OpenURL, songDetail.Artist, databaseID)
 			_, err := notionClient.Page.Create(context.Background(), &pageCreateRequest)
 
-			//todo 优化
+			//todo 优化 将错误信息用 channel 传出去
 			if err != nil {
 				fmt.Println()
 			}
@@ -299,7 +297,7 @@ func BuildInsertTrackPageRequest(track, trackID, trackCover, album, albumID, ope
 			Content: track,
 		},
 	})
-	pageProp["Track"] = notionapi.TitleProperty{
+	pageProp[constant.NOTION_DATABASE_COLUMN_TRACK] = notionapi.TitleProperty{
 		// ID:    "",
 		// Type:  "",
 		Title: trackRichTexts,
@@ -312,7 +310,7 @@ func BuildInsertTrackPageRequest(track, trackID, trackCover, album, albumID, ope
 			Content: trackID,
 		},
 	})
-	pageProp["TrackID"] = notionapi.RichTextProperty{
+	pageProp[constant.NOTION_DATABASE_COLUMN_TRACK_ID] = notionapi.RichTextProperty{
 		// ID:       "",
 		// Type:     "",
 		RichText: trackIDRichTexts,
@@ -325,7 +323,7 @@ func BuildInsertTrackPageRequest(track, trackID, trackCover, album, albumID, ope
 			Content: trackCover,
 		},
 	})
-	pageProp["TrackCover"] = notionapi.RichTextProperty{
+	pageProp[constant.NOTION_DATABASE_COLUMN_TRACK_COVER] = notionapi.RichTextProperty{
 		// ID:       "",
 		// Type:     "",
 		RichText: trackCoverRichTexts,
@@ -338,7 +336,7 @@ func BuildInsertTrackPageRequest(track, trackID, trackCover, album, albumID, ope
 			Content: album,
 		},
 	})
-	pageProp["Album"] = notionapi.RichTextProperty{
+	pageProp[constant.NOTION_DATABASE_COLUMN_ALBUM] = notionapi.RichTextProperty{
 		// ID:       "",
 		// Type:     "",
 		RichText: albumRichTexts,
@@ -351,7 +349,7 @@ func BuildInsertTrackPageRequest(track, trackID, trackCover, album, albumID, ope
 			Content: albumID,
 		},
 	})
-	pageProp["AlbumID"] = notionapi.RichTextProperty{
+	pageProp[constant.NOTION_DATABASE_COLUMN_ALBUM_ID] = notionapi.RichTextProperty{
 		// ID:       "",
 		// Type:     "",
 		RichText: albumIDRichTexts,
@@ -364,7 +362,7 @@ func BuildInsertTrackPageRequest(track, trackID, trackCover, album, albumID, ope
 			Content: openURL,
 		},
 	})
-	pageProp["OpenURL"] = notionapi.RichTextProperty{
+	pageProp[constant.NOTION_DATABASE_COLUMN_OPEN_URL] = notionapi.RichTextProperty{
 		// ID:       "",
 		// Type:     "",
 		RichText: openURLRichTexts,
@@ -379,7 +377,7 @@ func BuildInsertTrackPageRequest(track, trackID, trackCover, album, albumID, ope
 			// Color: "",
 		})
 	}
-	pageProp["Artists"] = notionapi.MultiSelectProperty{
+	pageProp[constant.NOTION_DATABASE_COLUMN_ARTISTS] = notionapi.MultiSelectProperty{
 		ID:          "",
 		Type:        "",
 		MultiSelect: artistOptions,

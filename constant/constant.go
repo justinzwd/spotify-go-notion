@@ -1,0 +1,12 @@
+package constant
+
+// notion database columns
+const (
+	NOTION_DATABASE_COLUMN_ARTISTS     = "Artists"
+	NOTION_DATABASE_COLUMN_TRACK       = "Track"
+	NOTION_DATABASE_COLUMN_TRACK_ID    = "TrackID"
+	NOTION_DATABASE_COLUMN_TRACK_COVER = "TrackCover"
+	NOTION_DATABASE_COLUMN_ALBUM       = "Album"
+	NOTION_DATABASE_COLUMN_ALBUM_ID    = "AlbumID"
+	NOTION_DATABASE_COLUMN_OPEN_URL    = "OpenURL"
+)
