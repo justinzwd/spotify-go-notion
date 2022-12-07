@@ -1,12 +1,4 @@
-# notionapi
-[![GitHub tag (latest SemVer)](https://img.shields.io/github/v/tag/jomei/notionapi?label=go%20module)](https://github.com/jomei/notionapi/tags)
-[![Go Reference](https://pkg.go.dev/badge/github.com/jomei/notionapi.svg)](https://pkg.go.dev/github.com/jomei/notionapi)
-[![Test](https://github.com/jomei/notionapi/actions/workflows/test.yml/badge.svg)](https://github.com/jomei/notionapi/actions/workflows/test.yml)
-
-An API client for the [Notion API](https://developers.notion.com/) implemented in Golang
-
-# Supported APIs
-It supports all APIs for Notion API version `2022-06-28`
+Spotify And Notion API
 
 # Installation
 
