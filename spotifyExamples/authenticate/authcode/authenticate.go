@@ -1,9 +1,7 @@
 // This example demonstrates how to authenticate with Spotify using the authorization code flow.
 // In order to run this example yourself, you'll need to:
 //
-//  1. Register an application at: https://developer.spotify.com/my-applications/
-//       - Use "http://localhost:8080/callback" as the redirect URI
-//  2. Set the SPOTIFY_ID environment variable to the client ID you got in step 1.
+//  1. Register an application at: https://developer.spotify.com/my-applications/  2. Set the SPOTIFY_ID environment variable to the client ID you got in step 1.
 //  3. Set the SPOTIFY_SECRET environment variable to the client secret from step 1.
 package main
 
@@ -81,7 +79,7 @@ func main() {
 
 	// fullPlaylistStr, _ := json.Marshal(fullPlaylist)
 	// fullPlaylistBytes := []byte(fullPlaylistStr)
-	// ioutil.WriteFile("./test2.json", fullPlaylistBytes, 0666)
+	// ioutil.WriteFile("./fullPlaylist", fullPlaylistBytes, 0666)
 }
 
 func main2() {
@@ -92,7 +90,7 @@ func main2() {
 		return
 	}
 	bb, _ := json.Marshal(database)
-	ioutil.WriteFile("./test4.json", bb, 0666)
+	ioutil.WriteFile("./getDatabase.json", bb, 0666)
 }
 
 func extractArtistSongsAndCreateNewPlaylist(client *spotify.Client, playlistId spotify.ID, artistName string) error {
@@ -104,7 +102,7 @@ func extractArtistSongsAndCreateNewPlaylist(client *spotify.Client, playlistId s
 
 	// fullPlaylistStr, _ := json.Marshal(playlist)
 	// fullPlaylistBytes := []byte(fullPlaylistStr)
-	// ioutil.WriteFile("./test2.json", fullPlaylistBytes, 0666)
+	// ioutil.WriteFile("./fullPlaylist", fullPlaylistBytes, 0666)
 	// return nil
 
 	//1.1 整个播放列表的 totalNum
@@ -177,7 +175,7 @@ func extractArtistSongsAndCreateNewPlaylist(client *spotify.Client, playlistId s
 
 	// artistSongMapStr, _ := json.Marshal(artistSongMap)
 	// artistSongMapBytes := []byte(artistSongMapStr)
-	// ioutil.WriteFile("./test3.json", artistSongMapBytes, 0666)
+	// ioutil.WriteFile("./artistSongMap.json", artistSongMapBytes, 0666)
 	// return nil
 
 	notionClient := notionapi.NewClient(notion_wuji_integration_secret)

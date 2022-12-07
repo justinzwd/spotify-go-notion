@@ -7,6 +7,8 @@ import (
 
 type PropertyConfigType string
 
+// todo 总结 type interface 以及 GetType() 类似于泛型的用法
+// 以及实例化的时候
 type PropertyConfig interface {
 	GetType() PropertyConfigType
 }
@@ -232,7 +234,7 @@ func (p LastEditedByPropertyConfig) GetType() PropertyConfigType {
 	return p.Type
 }
 
-//TODO: Status database properties cannot currently be configured via the API and so have no additional configuration within the status property.
+// TODO: Status database properties cannot currently be configured via the API and so have no additional configuration within the status property.
 type StatusPropertyConfig struct{}
 
 func (p StatusPropertyConfig) GetType() PropertyConfigType {

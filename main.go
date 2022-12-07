@@ -80,7 +80,7 @@ func main() {
 
 	// fullPlaylistStr, _ := json.Marshal(fullPlaylist)
 	// fullPlaylistBytes := []byte(fullPlaylistStr)
-	// ioutil.WriteFile("./test2.json", fullPlaylistBytes, 0666)
+	// ioutil.WriteFile("./fullPlaylist.json", fullPlaylistBytes, 0666)
 }
 
 func main2() {
@@ -91,8 +91,7 @@ func main2() {
 		return
 	}
 	bb, _ := json.Marshal(database)
-	//todo 将文件名改成有具体含义的文件名
-	ioutil.WriteFile("./test4.json", bb, 0666)
+	ioutil.WriteFile("./database.json", bb, 0666)
 }
 
 func extractArtistSongsAndCreateNewPlaylist(client *spotify.Client, playlistId spotify.ID, artistName string) error {
@@ -104,7 +103,7 @@ func extractArtistSongsAndCreateNewPlaylist(client *spotify.Client, playlistId s
 
 	// fullPlaylistStr, _ := json.Marshal(playlist)
 	// fullPlaylistBytes := []byte(fullPlaylistStr)
-	// ioutil.WriteFile("./test2.json", fullPlaylistBytes, 0666)
+	// ioutil.WriteFile("./fullPlaylist.json", fullPlaylistBytes, 0666)
 	// return nil
 
 	//1.1 整个播放列表的 totalNum
@@ -176,7 +175,7 @@ func extractArtistSongsAndCreateNewPlaylist(client *spotify.Client, playlistId s
 
 	// artistSongMapStr, _ := json.Marshal(artistSongMap)
 	// artistSongMapBytes := []byte(artistSongMapStr)
-	// ioutil.WriteFile("./test3.json", artistSongMapBytes, 0666)
+	// ioutil.WriteFile("./artistSongMap.json", artistSongMapBytes, 0666)
 	// return nil
 
 	//BatchInsertSongsIntoNotion

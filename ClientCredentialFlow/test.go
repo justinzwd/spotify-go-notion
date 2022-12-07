@@ -92,7 +92,7 @@ func getPlaylist(playlistId string) (core.FullPlaylist, error) {
 		return playlist, err
 	}
 	// fmt.Println(string(body))
-	// ioutil.WriteFile("./test.txt", body, 0666)
+	// ioutil.WriteFile("./getPlaylist.txt", body, 0666)
 	err = json.Unmarshal(body, &playlist)
 	if err != nil {
 		// fmt.Println(err)
