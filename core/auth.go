@@ -19,6 +19,13 @@ const (
 	TokenURL = "https://accounts.spotify.com/api/token"
 )
 
+const (
+	DEFAULT_CLIENT_ID     = "88f46cd5cc784dd897218e862d39b366"
+	DEFAULT_CLIENT_SECRET = "bfc246da5a7045a6a2390a6b59987a9d"
+	DEFAULT_USER_ID       = "justinzwd"
+	DEFAULT_PLAYLIST_ID   = "7g6jtS5UzZgTtlnuFhhLmT"
+)
+
 // Scopes let you specify exactly which types of data your application wants to access.
 // The set of scopes you pass in your authentication request determines what access the
 // permissions the user is asked to grant.
@@ -72,14 +79,13 @@ const (
 //
 // Example:
 //
-//     a := spotify.NewAuthenticator(redirectURL, spotify.ScopeUserLibaryRead, spotify.ScopeUserFollowRead)
-//     // direct user to Spotify to log in
-//     http.Redirect(w, r, a.AuthURL("state-string"), http.StatusFound)
+//	a := spotify.NewAuthenticator(redirectURL, spotify.ScopeUserLibaryRead, spotify.ScopeUserFollowRead)
+//	// direct user to Spotify to log in
+//	http.Redirect(w, r, a.AuthURL("state-string"), http.StatusFound)
 //
-//     // then, in redirect handler:
-//     token, err := a.Token(state, r)
-//     client := a.NewClient(token)
-//
+//	// then, in redirect handler:
+//	token, err := a.Token(state, r)
+//	client := a.NewClient(token)
 type Authenticator struct {
 	config  *oauth2.Config
 	context context.Context
@@ -94,11 +100,28 @@ type Authenticator struct {
 // them from some other source, you can call `SetAuthInfo(id, key)` on the
 // returned authenticator.
 func NewAuthenticator(redirectURL string, scopes ...string) Authenticator {
-	fmt.Println(os.Getenv("SPOTIFY_ID"))
-	fmt.Println(os.Getenv("SPOTIFY_SECRET"))
+	var spotifyID string
+	var spotifySecret string
+
+	// 如果 os.Getenv("SPOTIFY_ID") 获取不到的话，那就将其设置为 default的ID
+	if spotifyIDStr, exists := os.LookupEnv("SPOTIFY_ID"); !exists {
+		spotifyID = DEFAULT_CLIENT_ID
+	} else {
+		spotifyID = spotifyIDStr
+	}
+
+	if spotifySecretStr, exists := os.LookupEnv("SPOTIFY_SECRET"); !exists {
+		spotifySecret = DEFAULT_CLIENT_SECRET
+	} else {
+		spotifySecret = spotifySecretStr
+	}
+
+	fmt.Println("spotifyID", spotifyID)
+	fmt.Println("spotifySecret", spotifySecret)
+
 	cfg := &oauth2.Config{
-		ClientID:     os.Getenv("SPOTIFY_ID"),
-		ClientSecret: os.Getenv("SPOTIFY_SECRET"),
+		ClientID:     spotifyID,
+		ClientSecret: spotifySecret,
 		RedirectURL:  redirectURL,
 		Scopes:       scopes,
 		Endpoint: oauth2.Endpoint{

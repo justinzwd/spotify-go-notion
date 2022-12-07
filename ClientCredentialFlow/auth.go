@@ -1,4 +1,4 @@
-package types
+package ClientCredentialFlow
 
 type AuthGetResponse struct {
 	AccessToken string `json:"access_token"`

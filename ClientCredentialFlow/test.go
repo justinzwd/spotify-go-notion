@@ -1,4 +1,4 @@
-package main
+package ClientCredentialFlow
 
 import (
 	"encoding/base64"
@@ -7,7 +7,6 @@ import (
 	"io/ioutil"
 	"net/http"
 	"spotify-go-notion/core"
-	"spotify-go-notion/testFolder/types"
 	"strings"
 )
 
@@ -21,7 +20,6 @@ const (
 func main() {
 	// fmt.Println(os.Getenv("SPOTIFY_ID"))
 	// fmt.Println(os.Getenv("SPOTIFY_SECRET"))
-
 }
 
 func createPlaylist(userID, playlistName, description string, isPublic bool) error {
@@ -135,7 +133,7 @@ func getAuthToken(clientId, clientSecret string) string {
 		fmt.Println(err)
 		return ""
 	}
-	authResp := types.AuthGetResponse{
+	authResp := AuthGetResponse{
 		AccessToken: "",
 		TokenType:   "",
 		ExpiresIn:   0,
