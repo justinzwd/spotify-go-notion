@@ -159,7 +159,8 @@ func (a Authenticator) AuthURL(state string) string {
 
 // AuthURLWithDialog returns the same URL as AuthURL, but sets show_dialog to true
 func (a Authenticator) AuthURLWithDialog(state string) string {
-	return a.config.AuthCodeURL(state, oauth2.SetAuthURLParam("show_dialog", "true"))
+	return a.config.AuthCodeURL(state, oauth2.SetAuthURLParam("show_dialog", "false"))
+	// return a.config.AuthCodeURL(state, oauth2.SetAuthURLParam("show_dialog", "true"))
 }
 
 // AuthURLWithOpts returns the bause AuthURL along with any extra URL Auth params

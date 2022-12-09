@@ -84,6 +84,7 @@ func WithVersion(version string) ClientOption {
 	}
 }
 
+// 统一发送所有的请求
 func (c *Client) request(ctx context.Context, method string, urlStr string, queryParams map[string]string, requestBody interface{}) (*http.Response, error) {
 	u, err := c.baseUrl.Parse(fmt.Sprintf("%s/%s", c.apiVersion, urlStr))
 	if err != nil {
@@ -133,6 +134,7 @@ func (c *Client) request(ctx context.Context, method string, urlStr string, quer
 	return res, nil
 }
 
+// 分页
 type Pagination struct {
 	StartCursor Cursor
 	PageSize    int
